@@ -30,8 +30,9 @@ ENGINE = InnoDB;
 -- Table `LittleLemonDM`.`Bookings`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`Bookings` (
-  `BookingID` INT NOT NULL,
+  `BookingID` int NOT NULL AUTO_INCREMENT,
   `CustomerID` INT NOT NULL,
+  `TableID` INT NULL,
   `Date` DATE NOT NULL,
   `Time` TIME NULL,
   `NumberOfGuests` INT NOT NULL DEFAULT 1,
@@ -42,6 +43,11 @@ CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`Bookings` (
     FOREIGN KEY (`CustomerID`)
     REFERENCES `LittleLemonDM`.`Customers` (`CustomerID`)
     ON DELETE CASCADE
+    ON UPDATE CASCADE,
+  CONSTRAINT `Bookings_TableID_FK`
+    FOREIGN KEY (`TableID`) 
+    REFERENCES `LittleLemonDM`.`Tables` (`TableID`)
+    ON DELETE SET NULL
     ON UPDATE CASCADE)
 ENGINE = InnoDB;
 
@@ -51,7 +57,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`Tables` (
   `TableID` INT NOT NULL,
-  `Number` INT NULL,
+  `Number` VARCHAR(45) NOT NULL,
   `Status` VARCHAR(45) NULL,
   `Location` ENUM('INDOOR', 'OUTDOOR') NULL,
   PRIMARY KEY (`TableID`))
@@ -114,8 +120,8 @@ CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`Menu` (
   `Category` VARCHAR(45) NULL,
   `Vegetarian` TINYINT NULL DEFAULT NULL,
   `GlutenFree` TINYINT NULL DEFAULT NULL,
-  `Name` VARCHAR(45) NOT NULL,
-  `Description` VARCHAR(255) NULL,
+  `Name` VARCHAR(255) NOT NULL,
+  `Description` VARCHAR(1024) NULL DEFAULT NULL,
   `Price` DECIMAL(8,2) NULL,
   PRIMARY KEY (`ItemID`))
 ENGINE = InnoDB;
@@ -125,7 +131,7 @@ ENGINE = InnoDB;
 -- Table `LittleLemonDM`.`OrderStatus`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`OrderStatus` (
-  `RowID` INT NOT NULL,
+  `RowID` INT NOT NULL AUTO_INCREMENT,
   `OrderID` INT NULL,
   `Status` VARCHAR(45) NULL,
   `Remarks` VARCHAR(255) NULL,
