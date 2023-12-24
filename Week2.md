@@ -2,9 +2,7 @@
 
 ## Exercise: Create a virtual table to summarize data
 
-### Task 1
-
-Created the OrdersView and used it to fetch the data below.
+### Task 1: Created the OrdersView and used it to fetch the data below.
 
 ```sql
 Select * from OrdersView;
@@ -35,9 +33,7 @@ Select * from OrdersView;
 
 749 rows
 
-### Task 2
-
-Fetch data using a JOIN
+### Task 2: Fetch data using a JOIN
 
 ```sql
 SELECT
@@ -89,9 +85,7 @@ ORDER BY Cost ASC;
 |         41 | Saxon Guillot       |     105 | 36.85 | Grilled Salmon with Roasted Potato,Cheddar and Honey Roast Ham,Spicy Chicken and Brie                                               |
 |        238 | Lewes Devonish      |     625 | 37.85 | Eggs Royal with Smoked Salmon,Cheddar and Honey Roast Ham,Prawn, Crayfish and Asparagus                                             |
 
-### Task 3
-
-Using a sub query.
+### Task 3: Using a sub query.
 
 With the structure of my database it was better to use EXISTS in my sub query instead of ANY.
 
@@ -132,9 +126,7 @@ SELECT `Name` FROM Menu WHERE EXISTS (SELECT 1 FROM OrdersItems WHERE OrdersItem
 
 ## Exercise: Create optimized queries to manage and analyze data
 
-### Task 1
-
-Create Stored procedure GetMaxQuantity.
+### Task 1: Create Stored procedure GetMaxQuantity.
 
 ```sql
 CALL GetMaxQuantity();
@@ -144,9 +136,7 @@ CALL GetMaxQuantity();
 |-----------------------|
 |                     9 |
 
-### Task 2
-
-Create prepared statement GetOrderDetail
+### Task 2: Create prepared statement GetOrderDetail
 
 ```sql
 SET @OrderID = 16;
@@ -157,9 +147,7 @@ EXECUTE GetOrderDetail USING @OrderID;
 |---------|-------------|---------------|---------------|-----------|-------|---------------------|
 |      16 | Order #16   | Chadd Peoples | Annissa Ouver | OFFLINE   | 16.85 | 2023-11-19 09:23:06 |
 
-Task 3
-
-Create stored procedure CancelOrder.
+Task 3: Create stored procedure CancelOrder.
 
 ```sql
 --- My database uses a dedicated OrderStatus table ao allow tracking 
@@ -172,3 +160,250 @@ CALL CancelOrder(32, 'Custumer was being disrespectful to the server, manage ask
 | Confirmation                  |
 |-------------------------------|
 | Order #32 has been cancelled. |
+
+## Exercise: Create SQL queries to check available bookings based on user input
+
+### Task 1: Insert data.
+
+```sql
+INSERT INTO Bookings (`BookingID`, `CustomerID`, `TableID`, `Date`, `Time`, `NumberOfGuests`) VALUES
+(1, 1, 5, '2022-10-10', '18:00:00', 2),
+(2, 2, 3, '2022-11-12', '12:00:00', 6),
+(3, 3, 2, '2022-10-11', '12:00:00', 4),
+(4, 4, 2, '2022-10-13', '12:00:00', 2);
+```
+
+*Please note that my database structure is different from the one in the course instructions. My bookings table includes ```CustomerID```, ```time```, ```NumberOfGuests``` and ```CreatedAt``` columns.*
+
+
+```sql
+SELECT * FROM Bookings;
+```
+
+| BookingID | CustomerID | TableID | Date       | Time     | NumberOfGuests | CreatedAT           |
+|-----------|------------|---------|------------|----------|----------------|---------------------|
+|         1 |          1 |       5 | 2022-10-10 | 18:00:00 |              2 | 2023-12-24 13:47:21 |
+|         2 |          2 |       3 | 2022-11-12 | 12:00:00 |              6 | 2023-12-24 13:47:21 |
+|         3 |          3 |       2 | 2022-10-11 | 12:00:00 |              4 | 2023-12-24 13:47:21 |
+|         4 |          4 |       2 | 2022-10-13 | 12:00:00 |              2 | 2023-12-24 13:47:21 |
+
+### Task 2: Check table availability
+
+Create the stored procedure
+
+```sql
+DELIMITER //
+CREATE PROCEDURE `CheckBooking` (IN CheckBookingTableID INT, IN CheckBookingDate DATE, IN CheckBookingTime TIME)
+BEGIN
+    DECLARE IsTableBooked INT;
+
+    SELECT EXISTS(
+        SELECT 1 FROM Bookings WHERE Bookings.TableID = CheckBookingTableID AND Bookings.Date = CheckBookingDate AND Bookings.Time = CheckBookingTime
+    ) INTO IsTableBooked;
+
+    IF IsTableBooked = 1 THEN
+        SELECT CONCAT('Table ', CheckBookingTableID, ' is already booked.') AS `Booking Status`;
+    ELSE
+        SELECT
+            CONCAT('Table ', CheckBookingTableID, ' is available.') AS `Booking Status`;
+    END IF;
+END //
+DELIMITER ;
+```
+
+Call the stored procedure.
+
+```sql
+CALL CheckBooking(3, '2022-11-12', '12:00');
+```
+
+| Booking Status             |
+|----------------------------|
+| Table 3 is already booked. |
+
+### Task 3: Create stored procedure AddValidBooking
+
+Create the stored procedure.
+
+```sql
+DELIMITER //
+CREATE PROCEDURE AddValidBooking (
+    IN ParamCustomerID INT,
+    IN ParamTableID INT,
+    IN ParamDate DATE,
+    IN ParamTime TIME,
+    IN ParamNumberOfGuests INT
+)
+BEGIN
+    DECLARE IsTableAvailable INT;
+
+    -- Check if the table is available at the specified date and time
+    SELECT NOT EXISTS(
+        SELECT 1 FROM Bookings WHERE TableID = ParamTableID AND Date = ParamDate AND Time = ParamTime
+    ) INTO IsTableAvailable;
+
+    -- Start a transaction
+    START TRANSACTION;
+
+    -- Check if the table is available
+    IF IsTableAvailable THEN
+        -- If available, insert the booking
+        INSERT INTO Bookings (CustomerID, TableID, Date, Time, NumberOfGuests, CreatedAt) VALUES 
+            (ParamCustomerID, ParamTableID, ParamDate, ParamTime, ParamNumberOfGuests, CURRENT_TIMESTAMP);
+
+        COMMIT;
+        SELECT 'Table is available, booking successful.' AS `Booking Status`;
+    ELSE
+        ROLLBACK;
+        SELECT CONCAT('Table ', ParamTableID, ' is already booked - booking canceled') AS `Booking Status`;
+    END IF;
+END //
+DELIMITER ;
+```
+
+Call the stored procedure
+
+```sql
+CALL AddValidBooking(16, 6, '2022-12-17', '18:00:00', 2);
+```
+
+The results
+
+| Booking Status                          |
+|-----------------------------------------|
+| Table is available, booking successful. |
+
+Call the store procedure with the same parameter again and the result is;
+
+| Booking Status                               |
+|----------------------------------------------|
+| Table 6 is already booked - booking canceled |
+
+## Exercise: Create SQL queries to add and update bookings
+
+### Task 2: UpdateBooking stored procedure
+
+Create the stored procedure
+
+```sql
+DELIMITER //
+CREATE PROCEDURE `UpdateBooking` (
+    IN UpdateBookingID INT,
+    IN UpdateTableID INT,
+    IN UpdateDate DATE,
+    IN UpdateTime TIME
+)
+BEGIN
+    DECLARE IsNewTableAvailable INT;
+
+    -- Check if the new table is available
+    SELECT NOT EXISTS(
+        SELECT 1 
+        FROM Bookings 
+        WHERE
+            TableID = UpdateTableID
+            AND Date = UpdateDate
+            AND Time = UpdateTime
+            AND BookingID <> UpdateBookingID
+    ) INTO IsNewTableAvailable;
+
+    START TRANSACTION;
+
+    -- If the new table is available, update the booking
+    IF IsNewTableAvailable = 1 THEN
+    
+        UPDATE Bookings SET
+            TableID = UpdateTableID,
+            Date = UpdateDate,
+            Time = UpdateTime
+        WHERE BookingID = UpdateBookingID;
+
+        COMMIT;
+
+        SELECT CONCAT('Booking ', UpdateBookingID, ' updated.') AS Confirmation;
+    ELSE
+        SELECT CONCAT('Table ', UpdateTableID, ' is already booked.') AS Confirmation;
+    END IF;
+END //
+DELIMITER ;
+```
+
+Before the update
+
+```sql
+SELECT * FROM Bookings;
+```
+
+| BookingID | CustomerID | TableID | Date       | Time     | NumberOfGuests | CreatedAT           |
+|-----------|------------|---------|------------|----------|----------------|---------------------|
+|         1 |          1 |       5 | 2022-10-10 | 18:00:00 |              2 | 2023-12-24 13:47:21 |
+|         2 |          2 |       3 | 2022-11-12 | 12:00:00 |              6 | 2023-12-24 13:47:21 |
+|         3 |          3 |       2 | 2022-10-11 | 12:00:00 |              4 | 2023-12-24 13:47:21 |
+|         4 |          4 |       2 | 2022-10-13 | 12:00:00 |              2 | 2023-12-24 13:47:21 |
+|         5 |         16 |       6 | 2022-10-10 | 18:00:00 |              2 | 2023-12-24 14:39:54 |
+|         6 |         16 |       6 | 2022-12-17 | 18:00:00 |              2 | 2023-12-24 14:41:31 |
+
+Call the stored procedure to update a booking
+
+```sql
+CALL UpdateBooking(2, 10, '2022-12-17', '16:00');
+```
+
+Result
+
+| Confirmation       |
+|--------------------|
+| Booking 2 updated. |
+
+Bookings table after the update
+
+| BookingID | CustomerID | TableID | Date       | Time     | NumberOfGuests | CreatedAT           |
+|-----------|------------|---------|------------|----------|----------------|---------------------|
+|         1 |          1 |       5 | 2022-10-10 | 18:00:00 |              2 | 2023-12-24 13:47:21 |
+|         2 |          2 |      10 | 2022-12-17 | 16:00:00 |              6 | 2023-12-24 13:47:21 |
+|         3 |          3 |       2 | 2022-10-11 | 12:00:00 |              4 | 2023-12-24 13:47:21 |
+|         4 |          4 |       2 | 2022-10-13 | 12:00:00 |              2 | 2023-12-24 13:47:21 |
+|         5 |         16 |       6 | 2022-10-10 | 18:00:00 |              2 | 2023-12-24 14:39:54 |
+|         6 |         16 |       6 | 2022-12-17 | 18:00:00 |              2 | 2023-12-24 14:41:31 |
+
+### Task 3: CancelBooking stored procedure
+
+Create the stored procedure
+
+```sql
+DELIMITER //
+CREATE PROCEDURE `CancelBooking` (IN CancelBookingID INT)
+BEGIN
+    DECLARE IsBookingExists INT;
+
+    -- Check if the booking exists
+    SELECT EXISTS (
+        SELECT 1 FROM Bookings WHERE BookingID = CancelBookingID
+    ) INTO IsBookingExists;
+
+    START TRANSACTION;
+
+    IF IsBookingExists = 1 THEN
+        
+        DELETE FROM Bookings WHERE BookingID = CancelBookingID;
+        COMMIT;
+
+        SELECT CONCAT('Booking ', CancelBookingID, ' has been cancelled.') AS Confirmation;
+    ELSE
+        SELECT CONCAT('Booking ', CancelBookingID, ' does not exist.') AS Confirmation;
+    END IF;
+END //
+DELIMITER ;
+```
+
+Call the stored procedure
+
+```sql
+CALL CancelBooking(6);
+```
+
+Results
+
+| Confirmation                  |
+|-------------------------------|
+| Booking 6 has been cancelled. |
