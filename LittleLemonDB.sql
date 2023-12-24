@@ -51,7 +51,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`Tables` (
   `TableID` INT NOT NULL,
-  `Number` INT NULL,
+  `Number` VARCHAR(45) NOT NULL,
   `Status` VARCHAR(45) NULL,
   `Location` ENUM('INDOOR', 'OUTDOOR') NULL,
   PRIMARY KEY (`TableID`))
@@ -114,8 +114,8 @@ CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`Menu` (
   `Category` VARCHAR(45) NULL,
   `Vegetarian` TINYINT NULL DEFAULT NULL,
   `GlutenFree` TINYINT NULL DEFAULT NULL,
-  `Name` VARCHAR(45) NOT NULL,
-  `Description` VARCHAR(255) NULL,
+  `Name` VARCHAR(255) NOT NULL,
+  `Description` VARCHAR(1024) NULL DEFAULT NULL,
   `Price` DECIMAL(8,2) NULL,
   PRIMARY KEY (`ItemID`))
 ENGINE = InnoDB;
@@ -125,7 +125,7 @@ ENGINE = InnoDB;
 -- Table `LittleLemonDM`.`OrderStatus`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `LittleLemonDM`.`OrderStatus` (
-  `RowID` INT NOT NULL,
+  `RowID` INT NOT NULL AUTO_INCREMENT,
   `OrderID` INT NULL,
   `Status` VARCHAR(45) NULL,
   `Remarks` VARCHAR(255) NULL,
